@@ -21,23 +21,24 @@ import (
 )
 
 type URLEntry struct {
-	ShortID    string    `json:"short_id" dynamodbav:"short_id"`
-	TargetURL  string    `json:"target_url" dynamodbav:"target_url"`
-	CreatedAt  time.Time `json:"created_at" dynamodbav:"created_at"`
-	Title      string    `json:"title,omitempty" dynamodbav:"title,omitempty"`
+	ShortID   string    `json:"short_id" dynamodbav:"short_id"`
+	TargetURL string    `json:"target_url" dynamodbav:"target_url"`
+	CreatedAt time.Time `json:"created_at" dynamodbav:"created_at"`
+	Title     string    `json:"title,omitempty" dynamodbav:"title,omitempty"`
 }
 
 type AnalyticsEntry struct {
-	ShortID    string    `json:"short_id" dynamodbav:"short_id"`
-	Timestamp  string    `json:"timestamp" dynamodbav:"timestamp"`
-	UserAgent  string    `json:"user_agent" dynamodbav:"user_agent"`
-	Referrer   string    `json:"referrer" dynamodbav:"referrer"`
-	IPHash     string    `json:"ip_hash" dynamodbav:"ip_hash"`
+	ShortID   string `json:"short_id" dynamodbav:"short_id"`
+	Timestamp string `json:"timestamp" dynamodbav:"timestamp"`
+	UserAgent string `json:"user_agent" dynamodbav:"user_agent"`
+	Referrer  string `json:"referrer" dynamodbav:"referrer"`
+	IPHash    string `json:"ip_hash" dynamodbav:"ip_hash"`
 }
 
 type ShortenRequest struct {
-	URL   string `json:"url"`
-	Title string `json:"title,omitempty"`
+	URL     string `json:"url"`
+	Title   string `json:"title,omitempty"`
+	ShortID string `json:"shortId,omitempty"`
 }
 
 type ShortenResponse struct {
@@ -47,14 +48,14 @@ type ShortenResponse struct {
 }
 
 var (
-	ddbClient *dynamodb.Client
-	urlsTable string
+	ddbClient      *dynamodb.Client
+	urlsTable      string
 	analyticsTable string
 )
 
 func init() {
 	// Initialize the shortid generator
-	shortid.SetDefault()
+	// shortid.SetDefault()
 
 	// Set table names from environment or use defaults
 	urlsTable = os.Getenv("URLS_TABLE")
@@ -69,13 +70,39 @@ func init() {
 
 func main() {
 	// Load AWS config
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
+	cfgOptions := []func(*config.LoadOptions) error{
 		config.WithRegion(getEnv("AWS_REGION", "us-east-1")),
-	)
+	}
+
+	// Check for custom endpoint (for local development with DynamoDB Local)
+	if endpoint := os.Getenv("AWS_ENDPOINT"); endpoint != "" {
+		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:               endpoint,
+				HostnameImmutable: true,
+				PartitionID:       "aws",
+			}, nil
+		})
+		cfgOptions = append(cfgOptions, config.WithEndpointResolverWithOptions(customResolver))
+
+		// For local development, credentials can be dummy values
+		cfgOptions = append(cfgOptions, config.WithCredentialsProvider(
+			aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID: "dummy", SecretAccessKey: "dummy",
+					Source: "Hard-coded credentials for local development",
+				}, nil
+			}),
+		))
+
+		log.Printf("Using custom DynamoDB endpoint: %s", endpoint)
+	}
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(), cfgOptions...)
 	if err != nil {
 		log.Fatalf("Failed to load AWS config: %v", err)
 	}
-	
+
 	// Create DynamoDB client
 	ddbClient = dynamodb.NewFromConfig(cfg)
 
@@ -113,12 +140,34 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate short ID
-	sid, err := shortid.Generate()
-	if err != nil {
-		log.Printf("Error generating shortid: %v", err)
-		http.Error(w, "Failed to create short URL", http.StatusInternalServerError)
-		return
+	// Use provided ShortID or generate a new one
+	sid := req.ShortID
+	if sid == "" {
+		// Generate short ID only if not provided
+		var err error
+		sid, err = shortid.Generate()
+		if err != nil {
+			log.Printf("Error generating shortid: %v", err)
+			http.Error(w, "Failed to create short URL", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Check if the provided ShortID is already in use
+		result, err := ddbClient.GetItem(context.TODO(), &dynamodb.GetItemInput{
+			TableName: aws.String(urlsTable),
+			Key: map[string]types.AttributeValue{
+				"short_id": &types.AttributeValueMemberS{Value: sid},
+			},
+		})
+		if err != nil {
+			log.Printf("Error checking ShortID existence: %v", err)
+			http.Error(w, "Failed to verify ShortID availability", http.StatusInternalServerError)
+			return
+		}
+		if result.Item != nil {
+			http.Error(w, "The provided ShortID is already in use", http.StatusConflict)
+			return
+		}
 	}
 
 	// Create URL entry
@@ -154,7 +203,7 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 		proto = "https"
 	}
 	shortURL := fmt.Sprintf("%s://%s/%s", proto, r.Host, sid)
-	
+
 	resp := ShortenResponse{
 		ShortID:   sid,
 		ShortURL:  shortURL,
@@ -244,7 +293,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query analytics from DynamoDB
 	queryInput := &dynamodb.QueryInput{
-		TableName: aws.String(analyticsTable),
+		TableName:              aws.String(analyticsTable),
 		KeyConditionExpression: aws.String("short_id = :sid"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":sid": &types.AttributeValueMemberS{Value: shortID},
@@ -278,7 +327,7 @@ func hashIP(ip string) string {
 	// Remove port if present
 	parts := strings.Split(ip, ":")
 	ipAddress := parts[0]
-	
+
 	// Hash the IP address
 	hash := sha256.Sum256([]byte(ipAddress))
 	return hex.EncodeToString(hash[:])
