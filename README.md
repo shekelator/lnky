@@ -3,31 +3,45 @@ Link shortener
 
 ### Running
 
+#### Docker standalone
+
 ```
 docker build -t lnky .
 docker run -p 8080:8080 lnky
 ```
 
+#### Local development with DynamoDB Local
+
 ```
 # run a dynamo-local instance
 docker run -p 8000:8000 amazon/dynamodb-local
-# Create the URLs table
-aws dynamodb create-table \
-  --table-name URLs \
-  --attribute-definitions AttributeName=short_id,AttributeType=S \
-  --key-schema AttributeName=short_id,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --endpoint-url http://localhost:8000
-
-# Create the Analytics table
-aws dynamodb create-table \
-  --table-name Analytics \
-  --attribute-definitions AttributeName=short_id,AttributeType=S \
-  --key-schema AttributeName=short_id,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --endpoint-url http://localhost:8000
-
 AWS_ENDPOINT=http://localhost:8000 go run main.go
+```
+
+#### Docker Compose (recommended for development)
+
+Run both the application and DynamoDB Local together:
+
+```
+docker-compose up
+```
+
+Or to rebuild the containers:
+
+```
+docker-compose up --build
+```
+
+To run in detached mode:
+
+```
+docker-compose up -d
+```
+
+To stop the containers:
+
+```
+docker-compose down
 ```
 
 ### Deployment
@@ -51,9 +65,28 @@ curl -X POST http://localhost:8080/api/shorten \
 curl -X POST http://localhost:8080/api/shorten \
   -H "Content-Type: application/json" \
   -d '{"url":"https://example.com", "shortId":"example"}'
-
-# read
-aws dynamodb scan --table-name URLs --endpoint-url http://localhost:8000
-aws dynamodb scan --table-name Analytics --endpoint-url http://localhost:8000
-
 ```
+
+### Managing DynamoDB Data
+
+When using DynamoDB Local, you can use these AWS CLI commands:
+
+```bash
+# List all entries in the URLs table
+aws dynamodb scan --table-name URLs --endpoint-url http://localhost:8000
+
+# Get a specific URL by shortID
+aws dynamodb get-item --table-name URLs \
+  --key '{"short_id": {"S": "example"}}' \
+  --endpoint-url http://localhost:8000
+
+# Delete a URL by shortID
+aws dynamodb delete-item --table-name URLs \
+  --key '{"short_id": {"S": "example"}}' \
+  --endpoint-url http://localhost:8000
+
+# View analytics data
+aws dynamodb scan --table-name Analytics --endpoint-url http://localhost:8000
+```
+
+When using with a real AWS DynamoDB instance, omit the `--endpoint-url` parameter.
