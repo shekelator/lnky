@@ -65,6 +65,8 @@ curl -X POST http://localhost:8080/api/shorten \
 curl -X POST http://localhost:8080/api/shorten \
   -H "Content-Type: application/json" \
   -d '{"url":"https://example.com", "shortId":"example"}'
+
+curl http://localhost:8080/LHD-CMPHg
 ```
 
 ### Managing DynamoDB Data
@@ -90,3 +92,6 @@ aws dynamodb scan --table-name Analytics --endpoint-url http://localhost:8000
 ```
 
 When using with a real AWS DynamoDB instance, omit the `--endpoint-url` parameter.
+
+## Resources
+* [Deploying DynamoDB locally on your computer](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html)

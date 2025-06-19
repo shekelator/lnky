@@ -17,12 +17,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o lnky
 # Use a small image for the final container
 FROM alpine:latest
 
-# Install ca-certificates, curl, Docker, AWS CLI, and Docker Compose
-RUN apk --no-cache add ca-certificates curl python3 py3-pip docker && \
-    # pip3 install --no-cache-dir awscli && \
-    # Install Docker Compose binary
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
-    chmod +x /usr/local/bin/docker-compose
+RUN apk --no-cache add ca-certificates curl unzip groff less
 
 WORKDIR /app
 
