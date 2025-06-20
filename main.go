@@ -9,7 +9,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -48,9 +51,11 @@ type ShortenResponse struct {
 }
 
 var (
-	ddbClient      *dynamodb.Client
-	urlsTable      string
-	analyticsTable string
+	ddbClient       *dynamodb.Client
+	urlsTable       string
+	analyticsTable  string
+	analyticsChan   chan AnalyticsEntry // Channel for analytics processing
+	analyticsWorker sync.WaitGroup      // WaitGroup for graceful shutdown
 )
 
 func init() {
@@ -106,15 +111,50 @@ func main() {
 	// Create DynamoDB client
 	ddbClient = dynamodb.NewFromConfig(cfg)
 
+	// Initialize analytics channel and start worker
+	analyticsChan = make(chan AnalyticsEntry, 100) // Buffer 100 items
+	startAnalyticsWorker(context.Background())
+
 	// Set up HTTP handlers
 	http.HandleFunc("/api/shorten", shortenHandler)
 	http.HandleFunc("/api/stats/", statsHandler)
 	http.HandleFunc("/", redirectHandler)
 
-	// Get port from environment or use default
-	port := getEnv("PORT", "8080")
-	log.Printf("Server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	// Setup graceful shutdown
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start HTTP server in a goroutine
+	srv := &http.Server{
+		Addr:    ":" + getEnv("PORT", "8080"),
+		Handler: nil, // Default ServeMux
+	}
+
+	go func() {
+		log.Printf("Server starting on port %s", getEnv("PORT", "8080"))
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Error starting server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	<-stop
+	log.Println("Shutting down server...")
+
+	// Give outstanding requests a deadline for completion
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Shutdown the server
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	// Close analytics channel and wait for worker to finish
+	close(analyticsChan)
+	log.Println("Waiting for analytics processing to complete...")
+	analyticsWorker.Wait()
+	log.Println("Server exited gracefully")
 }
 
 func shortenHandler(w http.ResponseWriter, r *http.Request) {
@@ -249,30 +289,23 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Track analytics asynchronously
-	go func() {
-		analytics := AnalyticsEntry{
-			ShortID:   path,
-			Timestamp: time.Now().Format(time.RFC3339),
-			UserAgent: r.UserAgent(),
-			Referrer:  r.Referer(),
-			IPHash:    hashIP(r.RemoteAddr),
-		}
+	// Track analytics by sending to channel
+	analytics := AnalyticsEntry{
+		ShortID:   path,
+		Timestamp: time.Now().Format(time.RFC3339),
+		UserAgent: r.UserAgent(),
+		Referrer:  r.Referer(),
+		IPHash:    hashIP(r.RemoteAddr),
+	}
 
-		item, err := attributevalue.MarshalMap(analytics)
-		if err != nil {
-			log.Printf("Error marshaling analytics: %v", err)
-			return
-		}
-
-		_, err = ddbClient.PutItem(context.Background(), &dynamodb.PutItemInput{
-			TableName: aws.String(analyticsTable),
-			Item:      item,
-		})
-		if err != nil {
-			log.Printf("Error storing analytics: %v", err)
-		}
-	}()
+	// Try to send to channel, but don't block if channel is full
+	select {
+	case analyticsChan <- analytics:
+		// Analytics entry added to processing queue
+	default:
+		// Channel is full, log and continue
+		log.Printf("Analytics channel full, skipping entry for %s", path)
+	}
 
 	// Redirect to the target URL
 	http.Redirect(w, r, urlEntry.TargetURL, http.StatusFound)
@@ -343,4 +376,39 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// startAnalyticsWorker starts a goroutine that processes analytics entries
+// from the analyticsChan and stores them in DynamoDB
+func startAnalyticsWorker(ctx context.Context) {
+	analyticsWorker.Add(1)
+	go func() {
+		defer analyticsWorker.Done()
+		log.Println("Analytics worker started")
+
+		for entry := range analyticsChan {
+			// Use a separate context with timeout for each operation
+			opCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+
+			item, err := attributevalue.MarshalMap(entry)
+			if err != nil {
+				log.Printf("Error marshaling analytics: %v", err)
+				cancel()
+				continue
+			}
+
+			_, err = ddbClient.PutItem(opCtx, &dynamodb.PutItemInput{
+				TableName: aws.String(analyticsTable),
+				Item:      item,
+			})
+
+			if err != nil {
+				log.Printf("Error storing analytics: %v", err)
+			}
+
+			cancel() // Release resources
+		}
+
+		log.Println("Analytics worker stopped")
+	}()
 }
