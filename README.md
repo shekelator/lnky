@@ -93,5 +93,24 @@ aws dynamodb scan --table-name Analytics --endpoint-url http://localhost:8000
 
 When using with a real AWS DynamoDB instance, omit the `--endpoint-url` parameter.
 
+### Running tests
+
+```
+# Make sure your docker-compose setup is running first
+cd /workspaces/lnky
+go test -v
+```
+
+For shorter test runs:
+```
+go test -v -short
+```
+
+To check test coverage:
+```
+go test -cover
+```
+
+
 ## Resources
 * [Deploying DynamoDB locally on your computer](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html)
