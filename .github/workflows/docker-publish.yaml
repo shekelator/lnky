@@ -79,7 +79,6 @@ jobs:
           tags: ${{ github.sha }},${{ github.ref_name }},latest
           registry: ${{ env.ECR_REPOSITORY }}
           pushImage: ${{ github.event_name != 'pull_request' }}
-        env:
 
       # Sign the resulting Docker image digest except on PRs.
       # https://github.com/sigstore/cosign
