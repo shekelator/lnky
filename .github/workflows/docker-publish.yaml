@@ -101,6 +101,7 @@ jobs:
         id: build-and-push
         with:
           image: lnky
+          tags: ${{ github.sha }},${{ github.ref_name }}
           registry: ${{ env.ECR_REPOSITORY }}
           pushImage: ${{ github.event_name != 'pull_request' }}
         env:
@@ -114,7 +115,7 @@ jobs:
       # https://github.com/sigstore/cosign
       - name: Sign the published Docker image
         if: ${{ github.event_name != 'pull_request' }}
-        run: cosign sign --yes ${{ steps.build-and-push.outputs.imageName }}:latest
+        run: cosign sign --yes ${{ steps.build-and-push.outputs.imageName }}:${{ github.sha }}
         env:
           COSIGN_REPOSITORY: ${{ steps.build-and-push.outputs.imageFullName }}
           # COSIGN_EXPERIMENTAL: "true"
