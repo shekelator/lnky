@@ -102,7 +102,7 @@ jobs:
         with:
           image: lnky
           registry: ${{ env.ECR_REPOSITORY }}
-          # pushImage: ${{ github.event_name != 'pull_request' }}
+          pushImage: ${{ github.event_name != 'pull_request' }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -114,8 +114,10 @@ jobs:
       # https://github.com/sigstore/cosign
       - name: Sign the published Docker image
         if: ${{ github.event_name != 'pull_request' }}
+        run: cosign sign --yes {{ steps.build-and-push.outputs.imageName }}:latest
         env:
-          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_REPOSITORY: ${{ steps.build-and-push.outputs.imageFullName }}
+          # COSIGN_EXPERIMENTAL: "true"
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
-        run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build-and-push.outputs.digest }}
+        # run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build-and-push.outputs.digest }}
