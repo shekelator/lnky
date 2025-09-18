@@ -114,7 +114,7 @@ jobs:
       # https://github.com/sigstore/cosign
       - name: Sign the published Docker image
         if: ${{ github.event_name != 'pull_request' }}
-        run: cosign sign --yes {{ steps.build-and-push.outputs.imageName }}:latest
+        run: cosign sign --yes ${{ steps.build-and-push.outputs.imageName }}:latest
         env:
           COSIGN_REPOSITORY: ${{ steps.build-and-push.outputs.imageFullName }}
           # COSIGN_EXPERIMENTAL: "true"
