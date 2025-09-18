@@ -97,6 +97,8 @@ jobs:
 
       # https://docs.github.com/en/actions/use-cases-and-examples/deploying/deploying-to-amazon-elastic-container-service
       - uses: mr-smithers-excellent/docker-build-push@v6
+        name: Build and push Docker image
+        id: build-and-push
         with:
           image: lnky
           registry: ${{ env.ECR_REPOSITORY }}
