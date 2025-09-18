@@ -80,8 +80,6 @@ jobs:
           registry: ${{ env.ECR_REPOSITORY }}
           pushImage: ${{ github.event_name != 'pull_request' }}
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Sign the resulting Docker image digest except on PRs.
       # https://github.com/sigstore/cosign
