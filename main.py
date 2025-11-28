@@ -209,11 +209,6 @@ async def shorten_url(request: Request, body: ShortenRequest):
             status_code=status.HTTP_403_FORBIDDEN, detail="Shorten endpoint is disabled"
         )
 
-    if not body.url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="URL is required"
-        )
-
     if not is_valid_url(body.url):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid URL"
@@ -274,8 +269,13 @@ async def shorten_url(request: Request, body: ShortenRequest):
         )
 
     # Create response with short URL
-    proto = "https" if request.url.scheme == "https" else "http"
-    short_url = f"{proto}://{request.headers.get('host', 'localhost')}/{short_id}"
+    # Use X-Forwarded-Host if available (for proxies), otherwise use request host
+    host = request.headers.get("x-forwarded-host") or request.headers.get(
+        "host", "localhost"
+    )
+    # Use X-Forwarded-Proto if available (for proxies), otherwise use request scheme
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    short_url = f"{proto}://{host}/{short_id}"
 
     return ShortenResponse(
         short_id=short_id,
