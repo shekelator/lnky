@@ -306,7 +306,6 @@ class TestSettings:
         # Import Settings fresh
         from pydantic_settings import BaseSettings
         from pydantic import Field
-        from typing import Optional
 
         class TestSettingsClass(BaseSettings):
             enable_admin_endpoints: bool = Field(default=False, alias="ENABLE_ADMIN_ENDPOINTS")
