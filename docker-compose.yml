@@ -52,7 +52,5 @@ services:
       ANALYTICS_TABLE: "Analytics"
       AWS_ACCESS_KEY_ID: "DUMMYIDEXAMPLE"
       AWS_SECRET_ACCESS_KEY: "DUMMYEXAMPLEKEY"
-      ENABLE_SHORTEN: "true"
-      ENABLE_REDIRECT: "true"
-      ENABLE_STATS: "true"
+      ENABLE_ADMIN_ENDPOINTS: "true"
       PORT: "8080"

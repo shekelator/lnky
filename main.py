@@ -37,10 +37,9 @@ class Settings(BaseSettings):
     urls_table: str = Field(default="URLs", alias="URLS_TABLE")
     analytics_table: str = Field(default="Analytics", alias="ANALYTICS_TABLE")
 
-    # Endpoint feature flags
-    enable_shorten: bool = Field(default=True, alias="ENABLE_SHORTEN")
-    enable_redirect: bool = Field(default=True, alias="ENABLE_REDIRECT")
-    enable_stats: bool = Field(default=True, alias="ENABLE_STATS")
+    # Endpoint feature flag for admin endpoints (stats, etc.)
+    # The shorten and redirect endpoints are always available
+    enable_admin_endpoints: bool = Field(default=False, alias="ENABLE_ADMIN_ENDPOINTS")
 
     model_config = {"populate_by_name": True}
 
@@ -204,11 +203,6 @@ def hash_ip(ip: str) -> str:
 @app.post("/api/shorten", response_model=ShortenResponse)
 async def shorten_url(request: Request, body: ShortenRequest):
     """Create a shortened URL."""
-    if not settings.enable_shorten:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Shorten endpoint is disabled"
-        )
-
     if not is_valid_url(body.url):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid URL"
@@ -287,7 +281,7 @@ async def shorten_url(request: Request, body: ShortenRequest):
 @app.get("/api/stats/{short_id}", response_model=StatsResponse)
 async def get_stats(short_id: str):
     """Get analytics stats for a shortened URL."""
-    if not settings.enable_stats:
+    if not settings.enable_admin_endpoints:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Stats endpoint is disabled"
         )
@@ -332,12 +326,6 @@ async def get_stats(short_id: str):
 @app.get("/{short_id}")
 async def redirect_url(short_id: str, request: Request):
     """Redirect to the target URL for a shortened URL."""
-    if not settings.enable_redirect:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Redirect endpoint is disabled",
-        )
-
     if not short_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Not found"

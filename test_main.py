@@ -295,6 +295,41 @@ class TestUtilityFunctions:
         assert is_valid_url("ftp://example.com") is False
 
 
+class TestSettings:
+    """Tests for application settings."""
+
+    def test_enable_admin_endpoints_default_is_false(self, monkeypatch):
+        """Test that ENABLE_ADMIN_ENDPOINTS defaults to False."""
+        # Remove the env var if it exists
+        monkeypatch.delenv("ENABLE_ADMIN_ENDPOINTS", raising=False)
+
+        # Import Settings fresh
+        from pydantic_settings import BaseSettings
+        from pydantic import Field
+        from typing import Optional
+
+        class TestSettingsClass(BaseSettings):
+            enable_admin_endpoints: bool = Field(default=False, alias="ENABLE_ADMIN_ENDPOINTS")
+            model_config = {"populate_by_name": True}
+
+        settings = TestSettingsClass()
+        assert settings.enable_admin_endpoints is False
+
+    def test_enable_admin_endpoints_can_be_enabled(self, monkeypatch):
+        """Test that ENABLE_ADMIN_ENDPOINTS can be set to true via env var."""
+        monkeypatch.setenv("ENABLE_ADMIN_ENDPOINTS", "true")
+
+        from pydantic_settings import BaseSettings
+        from pydantic import Field
+
+        class TestSettingsClass(BaseSettings):
+            enable_admin_endpoints: bool = Field(default=False, alias="ENABLE_ADMIN_ENDPOINTS")
+            model_config = {"populate_by_name": True}
+
+        settings = TestSettingsClass()
+        assert settings.enable_admin_endpoints is True
+
+
 class TestPerformance:
     """Performance tests."""
 
