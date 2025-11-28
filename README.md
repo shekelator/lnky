@@ -1,61 +1,79 @@
 # lnky
-Link shortener
+Link shortener built with Python FastAPI
 
-### Running
+## Features
+- URL shortening with automatic or custom short IDs
+- Analytics tracking for URL clicks
+- Configurable endpoints via environment variables
+- DynamoDB backend (works with DynamoDB Local for development)
 
-#### Docker standalone
+## Running
 
-```
+### Docker standalone
+
+```bash
 docker build -t lnky .
 docker run -p 8080:8080 lnky
 ```
 
-#### Local development with DynamoDB Local
+### Local development with DynamoDB Local
 
-```
-# run a dynamo-local instance
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run a DynamoDB Local instance
 docker run -p 8000:8000 amazon/dynamodb-local
-AWS_ENDPOINT=http://localhost:8000 go run main.go
+
+# Run the application
+AWS_ENDPOINT=http://localhost:8000 python main.py
 ```
 
-#### Docker Compose (recommended for development)
+### Docker Compose (recommended for development)
 
 Run both the application and DynamoDB Local together:
 
-```
+```bash
 docker-compose up
 ```
 
 Or to rebuild the containers:
 
-```
+```bash
 docker-compose up --build
 ```
 
 To run in detached mode:
 
-```
+```bash
 docker-compose up -d
 ```
 
 To stop the containers:
 
-```
+```bash
 docker-compose down
 ```
 
-### Deployment
+## Environment Variables
 
-Runs in App runner. Environment variables:
-* `AWS_REGION` (the region where your DynamoDB tables are located)
-* `PORT` (AppRunner will set this automatically)
-* `URLS_TABLE` (optional, defaults to "URLs")
-* `ANALYTICS_TABLE` (optional, defaults to "Analytics")
+### Required for AWS deployment:
+* `AWS_REGION` - The region where your DynamoDB tables are located (default: us-east-1)
 
+### Optional:
+* `PORT` - Port to run the server on (default: 8080, AppRunner sets this automatically)
+* `AWS_ENDPOINT` - Custom DynamoDB endpoint for local development
+* `URLS_TABLE` - Name of the URLs table (default: "URLs")
+* `ANALYTICS_TABLE` - Name of the Analytics table (default: "Analytics")
 
-### Testing
+### Feature flags:
+* `ENABLE_SHORTEN` - Enable the /api/shorten endpoint (default: true)
+* `ENABLE_REDIRECT` - Enable the /{short_id} redirect endpoint (default: true)
+* `ENABLE_STATS` - Enable the /api/stats/{short_id} endpoint (default: true)
 
-```
+## API Examples
+
+```bash
 # Generate a random shortID
 curl -X POST http://localhost:8080/api/shorten \
   -H "Content-Type: application/json" \
@@ -66,10 +84,14 @@ curl -X POST http://localhost:8080/api/shorten \
   -H "Content-Type: application/json" \
   -d '{"url":"https://example.com", "shortId":"example"}'
 
-curl http://localhost:8080/LHD-CMPHg
+# Access a shortened URL
+curl -L http://localhost:8080/example
+
+# Get stats for a short URL
+curl http://localhost:8080/api/stats/example
 ```
 
-### Managing DynamoDB Data
+## Managing DynamoDB Data
 
 When using DynamoDB Local, you can use these AWS CLI commands:
 
@@ -93,24 +115,29 @@ aws dynamodb scan --table-name Analytics --endpoint-url http://localhost:8000
 
 When using with a real AWS DynamoDB instance, omit the `--endpoint-url` parameter.
 
-### Running tests
+## Running Tests
 
-```
-# Make sure your docker-compose setup is running first
-cd /workspaces/lnky
-go test -v
+```bash
+# Make sure docker-compose is running first
+docker-compose up -d
+
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest -v test_main.py
+
+# Run tests excluding slow tests
+pytest -v test_main.py -m "not slow"
+
+# Run with coverage
+pytest --cov=main test_main.py
 ```
 
-For shorter test runs:
-```
-go test -v -short
-```
+## Deployment
 
-To check test coverage:
-```
-go test -cover
-```
-
+Designed to run in AWS App Runner with DynamoDB backend.
 
 ## Resources
+* [FastAPI Documentation](https://fastapi.tiangolo.com/)
 * [Deploying DynamoDB locally on your computer](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html)
