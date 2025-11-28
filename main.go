@@ -116,8 +116,13 @@ func main() {
 	startAnalyticsWorker(context.Background())
 
 	// Set up HTTP handlers
-	http.HandleFunc("/api/shorten", shortenHandler)
-	http.HandleFunc("/api/stats/", statsHandler)
+	enableAdmin := strings.ToLower(os.Getenv("ENABLE_ADMIN_ENDPOINTS")) == "true"
+	if enableAdmin {
+		http.HandleFunc("/api/shorten", shortenHandler)
+		http.HandleFunc("/api/stats/", statsHandler)
+	} else {
+		log.Println("Admin endpoints disabled: ENABLE_ADMIN_ENDPOINTS is not set to 'true'")
+	}
 	http.HandleFunc("/", redirectHandler)
 
 	// Setup graceful shutdown

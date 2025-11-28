@@ -33,6 +33,8 @@ services:
       ANALYTICS_TABLE: "Analytics"
       AWS_ACCESS_KEY_ID: "DUMMYIDEXAMPLE"
       AWS_SECRET_ACCESS_KEY: "DUMMYEXAMPLEKEY"
+      ENABLE_ADMIN_ENDPOINTS: "true"
+      PORT: "8080"
     command: |
       sh -c "
         echo 'Waiting for DynamoDB to start...' &&
