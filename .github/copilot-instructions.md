@@ -61,11 +61,11 @@ Uses `pydantic-settings` with `BaseSettings`:
 - Uses `botocore.Config` for region configuration
 - Global `dynamodb_client` initialized in `lifespan()` startup
 
-### Analytics Queue Pattern
-- `asyncio.Queue(maxsize=100)` buffers analytics entries
-- `analytics_worker()` runs as background task consuming from queue
-- Redirects use `put_nowait()` to avoid blocking on full queue (logs warning instead)
-- Graceful shutdown: Send `None` sentinel, wait 10s with timeout, then cancel
+### Analytics Tracking
+- Analytics are written synchronously in the redirect handler.
+- Each redirect request records analytics data directly to DynamoDB before issuing the 302 response.
+- This approach is simple and reliable, but may add a small amount of latency to redirects.
+- There is no background queue or worker; all analytics logic runs inline with the request.
 
 ### Privacy: IP Hashing
 `hash_ip()` extracts IP (strips port), SHA256 hashes it before storing in Analytics table
