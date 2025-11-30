@@ -11,7 +11,7 @@ on:
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ "main", "python-rewrite" ]
+    branches: [ "main" ]
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -78,7 +78,7 @@ jobs:
           image: lnky
           tags: ${{ github.sha }},latest
           registry: ${{ env.ECR_REPOSITORY }}
-          # pushImage: ${{ github.event_name != 'pull_request' }}
+          pushImage: ${{ github.event_name != 'pull_request' }}
 
       # Sign the resulting Docker image digest except on PRs.
       # https://github.com/sigstore/cosign
