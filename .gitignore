@@ -1,35 +1,76 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-*.dylib
-lnky
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Test binary, built with `go test -c`
-*.test
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
 
-# Code coverage profiles and other test artifacts
-*.out
-coverage.*
-*.coverprofile
-profile.cov
+# Testing
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Jupyter
+.ipynb_checkpoints
 
-# Go workspace file
-go.work
-go.work.sum
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff/linting
+.ruff_cache/
 
 # env file
 .env
+.env.local
+.env.*.local
 
 # Editor/IDE
-# .idea/
 .vscode/
+.idea/
 
+# OS
 .DS_Store
+Thumbs.db
+
+# DynamoDB Local data
+docker/dynamodb/
+
+# Legacy Go files (kept for reference)
+# go.mod
+# go.sum
+# *.exe
+# *.exe~
+# *.dll
+# *.dylib
+# lnky
