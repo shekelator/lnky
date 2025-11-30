@@ -6,7 +6,7 @@
 
 ### Key Components
 - **FastAPI app** with lifespan context manager for startup/shutdown
-- **Background analytics worker**: Async queue-based system (`analytics_worker()`) that processes click tracking without blocking redirects
+- **Synchronous analytics logging**: Click tracking is written directly in the redirect handler (no background worker)
 - **DynamoDB tables**: `URLs` (hash key: `short_id`) and `Analytics` (composite key: `short_id` + `timestamp`)
 - **Feature flags**: All endpoints can be disabled via `ENABLE_SHORTEN`, `ENABLE_REDIRECT`, `ENABLE_STATS` env vars
 
