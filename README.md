@@ -3,9 +3,10 @@ Link shortener built with Python FastAPI
 
 ## Features
 - URL shortening with automatic or custom short IDs
-- Analytics tracking for URL clicks
+- Analytics tracking for URL clicks (written synchronously)
 - Configurable endpoints via environment variables
 - DynamoDB backend (works with DynamoDB Local for development)
+- Optimized for AWS App Runner with low-volume traffic
 
 ## Running
 

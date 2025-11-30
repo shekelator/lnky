@@ -206,8 +206,8 @@ class TestRedirect:
         assert redirect_response.status_code == 302
         assert redirect_response.headers["location"] == target_url
 
-        # Wait for analytics to be processed
-        time.sleep(1)
+        # Analytics are now written synchronously, but give a brief moment for consistency
+        time.sleep(0.1)
 
         # Check that analytics were recorded
         result = dynamodb_client.query(
@@ -247,8 +247,8 @@ class TestStats:
             http_client.get(f"/{custom_id}", follow_redirects=False)
             time.sleep(0.1)
 
-        # Wait for analytics to be processed
-        time.sleep(1)
+        # Analytics are now written synchronously
+        time.sleep(0.1)
 
         # Check stats
         stats_response = http_client.get(f"/api/stats/{custom_id}")

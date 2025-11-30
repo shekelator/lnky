@@ -4,7 +4,6 @@ Lnky - URL shortener service built with FastAPI.
 Runs in AWS AppRunner with DynamoDB backend.
 Supports local development with DynamoDB Local.
 """
-import asyncio
 import hashlib
 import logging
 import os
@@ -92,10 +91,8 @@ class StatsResponse(BaseModel):
     details: list[dict[str, Any]]
 
 
-# Global variables for DynamoDB client and analytics queue
+# Global variable for DynamoDB client
 dynamodb_client = None
-analytics_queue: asyncio.Queue = None
-analytics_task = None
 
 
 def get_dynamodb_client():
@@ -118,68 +115,27 @@ def get_dynamodb_client():
     return boto3.client("dynamodb", **kwargs)
 
 
-async def analytics_worker():
-    """Background worker that processes analytics entries."""
-    logger.info("Analytics worker started")
-    while True:
-        try:
-            entry = await analytics_queue.get()
-            if entry is None:  # Shutdown signal
-                break
-
-            try:
-                dynamodb_client.put_item(
-                    TableName=settings.analytics_table,
-                    Item={
-                        "short_id": {"S": entry.short_id},
-                        "timestamp": {"S": entry.timestamp},
-                        "user_agent": {"S": entry.user_agent},
-                        "referrer": {"S": entry.referrer},
-                        "ip_hash": {"S": entry.ip_hash},
-                    },
-                )
-            except Exception as e:
-                logger.error(f"Error storing analytics: {e}")
-
-            analytics_queue.task_done()
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logger.error(f"Analytics worker error: {e}")
-
-    logger.info("Analytics worker stopped")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager for startup and shutdown."""
-    global dynamodb_client, analytics_queue, analytics_task
+    """
+    Manages application startup and shutdown sequence.
+
+    On startup:
+        - Initializes the global DynamoDB client.
+
+    On shutdown:
+        - Logs shutdown message.
+    """
+    global dynamodb_client
 
     # Startup
     dynamodb_client = get_dynamodb_client()
-    analytics_queue = asyncio.Queue(maxsize=100)
-    analytics_task = asyncio.create_task(analytics_worker())
     logger.info(f"Server starting on port {settings.port}")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down server...")
-
-    # Signal analytics worker to stop
-    await analytics_queue.put(None)
-
-    logger.info("Waiting for analytics processing to complete...")
-    try:
-        await asyncio.wait_for(analytics_task, timeout=10.0)
-    except asyncio.TimeoutError:
-        analytics_task.cancel()
-        try:
-            await analytics_task
-        except asyncio.CancelledError:
-            pass
-
-    logger.info("Server exited gracefully")
+    logger.info("Server shut down gracefully")
 
 
 app = FastAPI(
@@ -364,20 +320,24 @@ async def redirect_url(short_id: str, request: Request):
 
     target_url = result["Item"].get("target_url", {}).get("S", "")
 
-    # Track analytics
-    analytics_entry = AnalyticsEntry(
-        short_id=short_id,
-        timestamp=datetime.now().isoformat(),
-        user_agent=request.headers.get("user-agent", ""),
-        referrer=request.headers.get("referer", ""),
-        ip_hash=hash_ip(request.client.host if request.client else ""),
-    )
-
-    # Try to add to queue, but don't block if full
+    # Track analytics (write directly to DynamoDB)
     try:
-        analytics_queue.put_nowait(analytics_entry)
-    except asyncio.QueueFull:
-        logger.warning(f"Analytics queue full, skipping entry for {short_id}")
+        client_ip = request.client.host if request.client else ""
+        timestamp = datetime.now().isoformat()
+        
+        dynamodb_client.put_item(
+            TableName=settings.analytics_table,
+            Item={
+                "short_id": {"S": short_id},
+                "timestamp": {"S": timestamp},
+                "user_agent": {"S": request.headers.get("user-agent", "")},
+                "referrer": {"S": request.headers.get("referer", "")},
+                "ip_hash": {"S": hash_ip(client_ip)},
+            },
+        )
+    except Exception as e:
+        # Log analytics errors but don't fail the redirect
+        logger.error(f"Error storing analytics for {short_id}: {e}")
 
     return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
 
