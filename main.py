@@ -7,6 +7,7 @@ Supports local development with DynamoDB Local.
 import hashlib
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, Optional
@@ -16,8 +17,14 @@ import shortuuid
 from botocore.config import Config
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
+
+# Constants for short ID validation
+SHORT_ID_MAX_LENGTH = 50
+SHORT_ID_MIN_LENGTH = 1
+SHORT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+RESERVED_PREFIXES = ("api",)
 
 # Configure logging
 logging.basicConfig(
@@ -54,6 +61,40 @@ class ShortenRequest(BaseModel):
     url: str = Field(..., min_length=1)
     title: Optional[str] = Field(default=None)
     shortId: Optional[str] = Field(default=None)
+
+    @field_validator("shortId")
+    @classmethod
+    def validate_short_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validate custom short ID format."""
+        if v is None:
+            return v
+
+        # Check length constraints
+        if len(v) < SHORT_ID_MIN_LENGTH:
+            raise ValueError(
+                f"Short ID must be at least {SHORT_ID_MIN_LENGTH} character(s)"
+            )
+        if len(v) > SHORT_ID_MAX_LENGTH:
+            raise ValueError(
+                f"Short ID must be at most {SHORT_ID_MAX_LENGTH} characters"
+            )
+
+        # Check character pattern (alphanumeric, hyphens, underscores, must start with alphanumeric)
+        if not SHORT_ID_PATTERN.match(v):
+            raise ValueError(
+                "Short ID must start with an alphanumeric character and contain "
+                "only alphanumeric characters, hyphens, and underscores"
+            )
+
+        # Check for reserved prefixes to avoid conflicts with API routes
+        v_lower = v.lower()
+        for prefix in RESERVED_PREFIXES:
+            if v_lower.startswith(prefix):
+                raise ValueError(
+                    f"Short ID cannot start with reserved prefix '{prefix}'"
+                )
+
+        return v
 
 
 class ShortenResponse(BaseModel):
