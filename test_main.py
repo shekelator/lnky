@@ -3,7 +3,6 @@ Tests for the Lnky URL shortener service.
 
 These tests run against the service and DynamoDB Local running via docker-compose.
 """
-import os
 import time
 
 import boto3
