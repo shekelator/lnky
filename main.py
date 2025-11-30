@@ -53,7 +53,7 @@ class ShortenRequest(BaseModel):
 
     url: str = Field(..., min_length=1)
     title: Optional[str] = Field(default=None)
-    shortId: Optional[str] = Field(default=None)
+    short_id: Optional[str] = Field(default=None, alias="shortId")
 
 
 class ShortenResponse(BaseModel):
