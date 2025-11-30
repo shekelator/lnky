@@ -76,7 +76,7 @@ jobs:
         id: build-and-push
         with:
           image: lnky
-          tags: ${{ github.sha }},${{ github.ref_name }},latest
+          tags: ${{ github.sha }},latest
           registry: ${{ env.ECR_REPOSITORY }}
           pushImage: ${{ github.event_name != 'pull_request' }}
 
