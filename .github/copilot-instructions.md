@@ -92,7 +92,7 @@ Uses `pydantic-settings` with `BaseSettings`:
 1. **Devcontainer**: Uses Python 3.12 with Docker-in-Docker feature for running compose inside container
 2. **URL validation**: Only accepts `http://` or `https://` prefixed URLs (see `is_valid_url()`)
 3. **Request headers**: App respects `X-Forwarded-Host` and `X-Forwarded-Proto` for short URL construction
-4. **Analytics timing**: Background worker may lag; use `await analytics_queue.join()` if you need synchronous guarantees
+4. **Analytics timing**: Analytics are written synchronously during the redirect; there is no background worker or analytics queue.
 5. **Table names**: Configurable via `URLS_TABLE`/`ANALYTICS_TABLE`, defaults to "URLs"/"Analytics"
 
 ## File Structure
