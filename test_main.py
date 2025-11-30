@@ -229,8 +229,6 @@ class TestShortenURL:
 
     def test_short_id_valid_characters(self, http_client):
         """Test that valid short IDs with hyphens and underscores work."""
-        import time
-
         custom_id = f"valid-id_{int(time.time())}"
         response = http_client.post(
             "/api/shorten",
