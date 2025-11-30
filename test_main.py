@@ -371,32 +371,20 @@ class TestUtilityFunctions:
         assert request.shortId is None
 
         # Too long should fail
-        try:
+        with pytest.raises(ValidationError):
             ShortenRequest(url="https://example.com", shortId="a" * 51)
-            assert False, "Should have raised ValidationError"
-        except ValidationError:
-            pass
 
         # Invalid characters should fail
-        try:
+        with pytest.raises(ValidationError):
             ShortenRequest(url="https://example.com", shortId="invalid@id")
-            assert False, "Should have raised ValidationError"
-        except ValidationError:
-            pass
 
         # Starting with hyphen should fail
-        try:
+        with pytest.raises(ValidationError):
             ShortenRequest(url="https://example.com", shortId="-invalid")
-            assert False, "Should have raised ValidationError"
-        except ValidationError:
-            pass
 
         # Reserved prefix should fail
-        try:
+        with pytest.raises(ValidationError):
             ShortenRequest(url="https://example.com", shortId="api-test")
-            assert False, "Should have raised ValidationError"
-        except ValidationError:
-            pass
 
 
 class TestPerformance:

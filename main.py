@@ -22,7 +22,6 @@ from pydantic_settings import BaseSettings
 
 # Constants for short ID validation
 SHORT_ID_MAX_LENGTH = 50
-SHORT_ID_MIN_LENGTH = 1
 SHORT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 RESERVED_PREFIXES = ("api",)
 
@@ -69,11 +68,7 @@ class ShortenRequest(BaseModel):
         if v is None:
             return v
 
-        # Check length constraints
-        if len(v) < SHORT_ID_MIN_LENGTH:
-            raise ValueError(
-                f"Short ID must be at least {SHORT_ID_MIN_LENGTH} character(s)"
-            )
+        # Check max length constraint
         if len(v) > SHORT_ID_MAX_LENGTH:
             raise ValueError(
                 f"Short ID must be at most {SHORT_ID_MAX_LENGTH} characters"
