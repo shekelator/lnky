@@ -12,7 +12,7 @@
 
 ### Data Flow
 1. `/api/shorten` → DynamoDB `put_item` → Returns short URL with proper `X-Forwarded-Host`/`X-Forwarded-Proto` handling for proxies
-2. `/{short_id}` → DynamoDB `get_item` → Queue analytics (non-blocking) → 302 redirect
+2. `/{short_id}` → DynamoDB `get_item` → Write analytics synchronously → 302 redirect
 3. `/api/stats/{short_id}` → DynamoDB `query` on Analytics table → Return click count + details
 
 ## Development Workflow
