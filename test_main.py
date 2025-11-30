@@ -198,7 +198,7 @@ class TestRedirect:
 
         # Now test the redirect (without following)
         redirect_response = http_client.get(
-            f"/{short_id}",
+            f"/s/{short_id}",
             follow_redirects=False,
         )
 
@@ -220,7 +220,7 @@ class TestRedirect:
     def test_redirect_nonexistent(self, http_client):
         """Test redirect for non-existent short URL."""
         response = http_client.get(
-            "/nonexistent-short-id",
+            "/s/nonexistent-short-id",
             follow_redirects=False,
         )
         assert response.status_code == 404
@@ -243,7 +243,7 @@ class TestStats:
 
         # Access the URL a few times
         for _ in range(3):
-            http_client.get(f"/{custom_id}", follow_redirects=False)
+            http_client.get(f"/s/{custom_id}", follow_redirects=False)
             time.sleep(0.1)
 
         # Analytics are now written synchronously
@@ -315,7 +315,7 @@ class TestPerformance:
         start = time.time()
 
         for _ in range(num_requests):
-            http_client.get(f"/{short_id}", follow_redirects=False)
+            http_client.get(f"/s/{short_id}", follow_redirects=False)
 
         elapsed = time.time() - start
         avg_ms = (elapsed * 1000) / num_requests

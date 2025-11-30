@@ -231,7 +231,7 @@ async def shorten_url(request: Request, body: ShortenRequest):
     )
     # Use X-Forwarded-Proto if available (for proxies), otherwise use request scheme
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
-    short_url = f"{proto}://{host}/{short_id}"
+    short_url = f"{proto}://{host}/s/{short_id}"
 
     return ShortenResponse(
         short_id=short_id,
@@ -285,7 +285,7 @@ async def get_stats(short_id: str):
         )
 
 
-@app.get("/{short_id}")
+@app.get("/s/{short_id}")
 async def redirect_url(short_id: str, request: Request):
     """Redirect to the target URL for a shortened URL."""
     if not settings.enable_redirect:
