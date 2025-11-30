@@ -233,6 +233,63 @@ class TestShortenURL:
             Key={"short_id": {"S": custom_id.upper()}},
         )
         assert "Item" not in result_upper
+    def test_short_id_too_long(self, http_client):
+        """Test that short ID exceeding max length is rejected."""
+        long_id = "a" * 51  # Exceeds SHORT_ID_MAX_LENGTH of 50
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/too-long", "shortId": long_id},
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_short_id_invalid_characters(self, http_client):
+        """Test that short ID with invalid characters is rejected."""
+        # Test special characters
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/special", "shortId": "my@id!"},
+        )
+        assert response.status_code == 422
+
+        # Test spaces
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/spaces", "shortId": "my short id"},
+        )
+        assert response.status_code == 422
+
+        # Test starting with hyphen
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/hyphen", "shortId": "-startswith"},
+        )
+        assert response.status_code == 422
+
+    def test_short_id_reserved_prefix(self, http_client):
+        """Test that short ID starting with reserved prefix is rejected."""
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/api-prefix", "shortId": "api-endpoint"},
+        )
+        assert response.status_code == 422
+
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/API-prefix", "shortId": "API-endpoint"},
+        )
+        assert response.status_code == 422
+
+    def test_short_id_valid_characters(self, http_client):
+        """Test that valid short IDs with hyphens and underscores work."""
+
+        custom_id = f"valid-id_{int(time.time())}"
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/valid", "shortId": custom_id},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["short_id"] == custom_id
 
 
 class TestRedirect:
@@ -354,6 +411,51 @@ class TestUtilityFunctions:
         assert is_valid_url("https://example.com") is True
         assert is_valid_url("example.com") is False
         assert is_valid_url("ftp://example.com") is False
+
+    def test_short_id_validation(self):
+        """Test short ID validation in ShortenRequest model."""
+        from pydantic import ValidationError
+
+        from main import ShortenRequest
+
+        # Valid short IDs should work
+        request = ShortenRequest(url="https://example.com", shortId="valid123")
+        assert request.short_id == "valid123"
+
+        request = ShortenRequest(url="https://example.com", shortId="valid-id_123")
+        assert request.short_id == "valid-id_123"
+
+        # None should work (auto-generated)
+        request = ShortenRequest(url="https://example.com")
+        assert request.short_id is None
+
+        # Too long should fail
+        try:
+            ShortenRequest(url="https://example.com", shortId="a" * 51)
+            assert False, "Should have raised ValidationError"
+        except ValidationError:
+            pass
+
+        # Invalid characters should fail
+        try:
+            ShortenRequest(url="https://example.com", shortId="invalid@id")
+            assert False, "Should have raised ValidationError"
+        except ValidationError:
+            pass
+
+        # Starting with hyphen should fail
+        try:
+            ShortenRequest(url="https://example.com", shortId="-invalid")
+            assert False, "Should have raised ValidationError"
+        except ValidationError:
+            pass
+
+        # Reserved prefix should fail
+        try:
+            ShortenRequest(url="https://example.com", shortId="api-test")
+            assert False, "Should have raised ValidationError"
+        except ValidationError:
+            pass
 
 
 class TestPerformance:
