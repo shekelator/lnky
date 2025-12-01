@@ -73,6 +73,9 @@ docker-compose down
 ## API Examples
 
 ```bash
+# Health check
+curl http://localhost:8080/health
+
 # Generate a random shortID
 curl -X POST http://localhost:8080/api/shorten \
   -H "Content-Type: application/json" \

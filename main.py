@@ -155,6 +155,21 @@ def hash_ip(ip: str) -> str:
     return hashlib.sha256(ip_address.encode()).hexdigest()
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for AWS App Runner and monitoring."""
+    try:
+        # Test DynamoDB connection by listing tables
+        dynamodb_client.list_tables()
+        return {"status": "healthy", "service": "lnky"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service unhealthy",
+        )
+
+
 @app.post("/api/shorten", response_model=ShortenResponse)
 async def shorten_url(request: Request, body: ShortenRequest):
     """Create a shortened URL."""

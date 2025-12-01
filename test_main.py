@@ -263,6 +263,14 @@ class TestStats:
 class TestUtilityFunctions:
     """Tests for utility functions."""
 
+    def test_health_check(self, http_client):
+        """Test health check endpoint."""
+        response = http_client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["service"] == "lnky"
+
     def test_hash_ip(self):
         """Test IP hashing functionality."""
         from main import hash_ip
