@@ -357,3 +357,87 @@ class TestConcurrency:
 
         # Check uniqueness
         assert len(set(results)) == len(results), "Short IDs should be unique"
+
+
+class TestFeatureFlags:
+    """Tests for feature flag environment variables."""
+
+    def test_admin_endpoints_disabled(self):
+        """Test that admin endpoints are disabled when ENABLE_ADMIN_ENDPOINTS=false."""
+        import httpx
+        import subprocess
+        import sys
+
+        # Start a separate instance with admin endpoints disabled
+        env = {
+            "AWS_REGION": "us-east-1",
+            "AWS_ENDPOINT": "http://localhost:8000",
+            "URLS_TABLE": "URLs",
+            "ANALYTICS_TABLE": "Analytics",
+            "AWS_ACCESS_KEY_ID": "DUMMYIDEXAMPLE",
+            "AWS_SECRET_ACCESS_KEY": "DUMMYEXAMPLEKEY",
+            "ENABLE_ADMIN_ENDPOINTS": "false",
+            "PORT": "8081",
+        }
+
+        # Start the server in a subprocess
+        process = subprocess.Popen(
+            [sys.executable, "main.py"],
+            env={**subprocess.os.environ, **env},
+            cwd="/workspaces/lnky",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        try:
+            # Wait for server to start
+            time.sleep(3)
+
+            with httpx.Client(base_url="http://localhost:8081", timeout=10.0) as client:
+                # Test that shorten endpoint returns 403
+                shorten_response = client.post(
+                    "/api/shorten",
+                    json={"url": "https://test.example.com/disabled"},
+                )
+                assert shorten_response.status_code == 403
+                assert "Admin endpoints are disabled" in shorten_response.json()["detail"]
+
+                # Test that stats endpoint returns 403
+                stats_response = client.get("/api/stats/test-id")
+                assert stats_response.status_code == 403
+                assert "Admin endpoints are disabled" in stats_response.json()["detail"]
+
+                # Test that redirect endpoint still works (should return 404 for non-existent)
+                redirect_response = client.get(
+                    "/s/nonexistent-id",
+                    follow_redirects=False,
+                )
+                assert redirect_response.status_code == 404
+
+        finally:
+            # Clean up the subprocess
+            process.terminate()
+            process.wait(timeout=5)
+
+    def test_admin_endpoints_enabled_by_default(self, http_client):
+        """Test that admin endpoints are enabled by default."""
+        # The main service should have admin endpoints enabled
+        # Test shorten endpoint is accessible
+        response = http_client.post(
+            "/api/shorten",
+            json={"url": "https://test.example.com/enabled-test"},
+        )
+        assert response.status_code == 200
+        short_id = response.json()["short_id"]
+
+        # Test stats endpoint is accessible
+        stats_response = http_client.get(f"/api/stats/{short_id}")
+        assert stats_response.status_code == 200
+        assert stats_response.json()["short_id"] == short_id
+
+        # Test redirect endpoint is accessible
+        redirect_response = http_client.get(
+            f"/s/{short_id}",
+            follow_redirects=False,
+        )
+        assert redirect_response.status_code == 302

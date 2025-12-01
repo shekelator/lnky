@@ -54,6 +54,7 @@ Uses `pydantic-settings` with `BaseSettings`:
 - All config via env vars (e.g., `AWS_REGION`, `AWS_ENDPOINT`)
 - Aliases support both formats: `aws_region` or `AWS_REGION`
 - `AWS_ENDPOINT` triggers local mode with dummy credentials
+- `ENABLE_ADMIN_ENDPOINTS` (boolean) controls access to `/api/shorten` and `/api/stats` endpoints; redirect endpoint is always enabled
 
 ### DynamoDB Client Creation
 `get_dynamodb_client()` returns boto3 client with conditional logic:

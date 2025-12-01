@@ -68,9 +68,7 @@ docker-compose down
 * `ANALYTICS_TABLE` - Name of the Analytics table (default: "Analytics")
 
 ### Feature flags:
-* `ENABLE_SHORTEN` - Enable the /api/shorten endpoint (default: true)
-* `ENABLE_REDIRECT` - Enable the /{short_id} redirect endpoint (default: true)
-* `ENABLE_STATS` - Enable the /api/stats/{short_id} endpoint (default: true)
+* `ENABLE_ADMIN_ENDPOINTS` - Enable the /api/shorten and /api/stats endpoints (default: true). When false, only the redirect endpoint is available.
 
 ## API Examples
 

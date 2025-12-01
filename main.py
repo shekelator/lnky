@@ -37,9 +37,7 @@ class Settings(BaseSettings):
     analytics_table: str = Field(default="Analytics", alias="ANALYTICS_TABLE")
 
     # Endpoint feature flags
-    enable_shorten: bool = Field(default=True, alias="ENABLE_SHORTEN")
-    enable_redirect: bool = Field(default=True, alias="ENABLE_REDIRECT")
-    enable_stats: bool = Field(default=True, alias="ENABLE_STATS")
+    enable_admin_endpoints: bool = Field(default=True, alias="ENABLE_ADMIN_ENDPOINTS")
 
     model_config = {"populate_by_name": True}
 
@@ -160,9 +158,9 @@ def hash_ip(ip: str) -> str:
 @app.post("/api/shorten", response_model=ShortenResponse)
 async def shorten_url(request: Request, body: ShortenRequest):
     """Create a shortened URL."""
-    if not settings.enable_shorten:
+    if not settings.enable_admin_endpoints:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Shorten endpoint is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin endpoints are disabled"
         )
 
     if not is_valid_url(body.url):
@@ -171,7 +169,7 @@ async def shorten_url(request: Request, body: ShortenRequest):
         )
 
     # Use provided shortId or generate a new one
-    short_id = body.shortId
+    short_id = body.short_id
     if short_id:
         # Check if the provided shortId is already in use
         try:
@@ -243,9 +241,9 @@ async def shorten_url(request: Request, body: ShortenRequest):
 @app.get("/api/stats/{short_id}", response_model=StatsResponse)
 async def get_stats(short_id: str):
     """Get analytics stats for a shortened URL."""
-    if not settings.enable_stats:
+    if not settings.enable_admin_endpoints:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Stats endpoint is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin endpoints are disabled"
         )
 
     if not short_id:
@@ -288,12 +286,6 @@ async def get_stats(short_id: str):
 @app.get("/s/{short_id}")
 async def redirect_url(short_id: str, request: Request):
     """Redirect to the target URL for a shortened URL."""
-    if not settings.enable_redirect:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Redirect endpoint is disabled",
-        )
-
     if not short_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Not found"

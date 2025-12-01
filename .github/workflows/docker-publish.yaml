@@ -7,11 +7,11 @@ name: Docker
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop"]
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -70,13 +70,23 @@ jobs:
         with:
           images: ${{ env.ECR_REPOSITORY }}
 
+      # Set tags based on branch
+      - name: Set image tags
+        id: set-tags
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "tags=dev-${{ github.sha }},dev-latest" >> $GITHUB_OUTPUT
+          else
+            echo "tags=${{ github.sha }},latest" >> $GITHUB_OUTPUT
+          fi
+
       # https://docs.github.com/en/actions/use-cases-and-examples/deploying/deploying-to-amazon-elastic-container-service
       - uses: mr-smithers-excellent/docker-build-push@v6
         name: Build and push Docker image
         id: build-and-push
         with:
           image: lnky
-          tags: ${{ github.sha }},latest
+          tags: ${{ steps.set-tags.outputs.tags }}
           registry: ${{ env.ECR_REPOSITORY }}
           pushImage: ${{ github.event_name != 'pull_request' }}
 
