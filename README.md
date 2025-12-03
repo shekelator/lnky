@@ -9,6 +9,11 @@ Link shortener built with Python FastAPI
 - DynamoDB backend (works with DynamoDB Local for development)
 - Optimized for AWS App Runner with low-volume traffic
 
+## TODO
+- Delete endpoint
+- Possibly improve tooling? Script for management?
+- Endpoint to list all URLs, perhaps with stats in more consumable fashion
+
 ## Running
 
 ### Docker standalone
