@@ -3,6 +3,7 @@ Link shortener built with Python FastAPI
 
 ## Features
 - URL shortening with automatic or custom short IDs
+- Case-insensitive short IDs (e.g., "ShortID" and "shortid" are treated as the same)
 - Analytics tracking for URL clicks (written synchronously)
 - Configurable endpoints via environment variables
 - DynamoDB backend (works with DynamoDB Local for development)
@@ -68,13 +69,14 @@ docker-compose down
 * `ANALYTICS_TABLE` - Name of the Analytics table (default: "Analytics")
 
 ### Feature flags:
-* `ENABLE_SHORTEN` - Enable the /api/shorten endpoint (default: true)
-* `ENABLE_REDIRECT` - Enable the /{short_id} redirect endpoint (default: true)
-* `ENABLE_STATS` - Enable the /api/stats/{short_id} endpoint (default: true)
+* `ENABLE_ADMIN_ENDPOINTS` - Enable the /api/shorten and /api/stats endpoints (default: true). When false, only the redirect endpoint is available.
 
 ## API Examples
 
 ```bash
+# Health check
+curl http://localhost:8080/health
+
 # Generate a random shortID
 curl -X POST http://localhost:8080/api/shorten \
   -H "Content-Type: application/json" \

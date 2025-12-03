@@ -37,9 +37,7 @@ class Settings(BaseSettings):
     analytics_table: str = Field(default="Analytics", alias="ANALYTICS_TABLE")
 
     # Endpoint feature flags
-    enable_shorten: bool = Field(default=True, alias="ENABLE_SHORTEN")
-    enable_redirect: bool = Field(default=True, alias="ENABLE_REDIRECT")
-    enable_stats: bool = Field(default=True, alias="ENABLE_STATS")
+    enable_admin_endpoints: bool = Field(default=True, alias="ENABLE_ADMIN_ENDPOINTS")
 
     model_config = {"populate_by_name": True}
 
@@ -157,12 +155,27 @@ def hash_ip(ip: str) -> str:
     return hashlib.sha256(ip_address.encode()).hexdigest()
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for AWS App Runner and monitoring."""
+    try:
+        # Test DynamoDB connection by listing tables
+        dynamodb_client.list_tables()
+        return {"status": "healthy", "service": "lnky"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service unhealthy",
+        )
+
+
 @app.post("/api/shorten", response_model=ShortenResponse)
 async def shorten_url(request: Request, body: ShortenRequest):
     """Create a shortened URL."""
-    if not settings.enable_shorten:
+    if not settings.enable_admin_endpoints:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Shorten endpoint is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin endpoints are disabled"
         )
 
     if not is_valid_url(body.url):
@@ -171,8 +184,11 @@ async def shorten_url(request: Request, body: ShortenRequest):
         )
 
     # Use provided shortId or generate a new one
-    short_id = body.shortId
+    short_id = body.short_id
     if short_id:
+        # Normalize to lowercase for case-insensitive behavior
+        short_id = short_id.lower()
+        
         # Check if the provided shortId is already in use
         try:
             result = dynamodb_client.get_item(
@@ -182,7 +198,7 @@ async def shorten_url(request: Request, body: ShortenRequest):
             if "Item" in result:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="The provided ShortID is already in use",
+                    detail=f"Short ID '{body.short_id}' already exists (case-insensitive)",
                 )
         except HTTPException:
             raise
@@ -193,7 +209,8 @@ async def shorten_url(request: Request, body: ShortenRequest):
                 detail="Failed to verify ShortID availability",
             )
     else:
-        short_id = shortuuid.uuid()[:9]  # Generate a short unique ID
+        # Generate a short unique ID (lowercase)
+        short_id = shortuuid.uuid()[:9].lower()
 
     # Create URL entry
     url_entry = URLEntry(
@@ -243,9 +260,9 @@ async def shorten_url(request: Request, body: ShortenRequest):
 @app.get("/api/stats/{short_id}", response_model=StatsResponse)
 async def get_stats(short_id: str):
     """Get analytics stats for a shortened URL."""
-    if not settings.enable_stats:
+    if not settings.enable_admin_endpoints:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Stats endpoint is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin endpoints are disabled"
         )
 
     if not short_id:
@@ -288,22 +305,19 @@ async def get_stats(short_id: str):
 @app.get("/s/{short_id}")
 async def redirect_url(short_id: str, request: Request):
     """Redirect to the target URL for a shortened URL."""
-    if not settings.enable_redirect:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Redirect endpoint is disabled",
-        )
-
     if not short_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
         )
 
+    # Normalize to lowercase for case-insensitive lookup
+    short_id_lower = short_id.lower()
+
     # Look up the URL in DynamoDB
     try:
         result = dynamodb_client.get_item(
             TableName=settings.urls_table,
-            Key={"short_id": {"S": short_id}},
+            Key={"short_id": {"S": short_id_lower}},
         )
     except Exception as e:
         logger.error(f"Error getting item from DynamoDB: {e}")
@@ -328,7 +342,7 @@ async def redirect_url(short_id: str, request: Request):
         dynamodb_client.put_item(
             TableName=settings.analytics_table,
             Item={
-                "short_id": {"S": short_id},
+                "short_id": {"S": short_id_lower},
                 "timestamp": {"S": timestamp},
                 "user_agent": {"S": request.headers.get("user-agent", "")},
                 "referrer": {"S": request.headers.get("referer", "")},

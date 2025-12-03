@@ -8,12 +8,14 @@
 - **FastAPI app** with lifespan context manager for startup/shutdown
 - **Synchronous analytics logging**: Click tracking is written directly in the redirect handler (no background worker)
 - **DynamoDB tables**: `URLs` (hash key: `short_id`) and `Analytics` (composite key: `short_id` + `timestamp`)
-- **Feature flags**: All endpoints can be disabled via `ENABLE_SHORTEN`, `ENABLE_REDIRECT`, `ENABLE_STATS` env vars
+- **Feature flags**: `ENABLE_ADMIN_ENDPOINTS` controls admin endpoints; redirect is always enabled
+- **Health check**: `/health` endpoint for AWS App Runner monitoring
 
 ### Data Flow
-1. `/api/shorten` → DynamoDB `put_item` → Returns short URL with proper `X-Forwarded-Host`/`X-Forwarded-Proto` handling for proxies
-2. `/{short_id}` → DynamoDB `get_item` → Write analytics synchronously → 302 redirect
-3. `/api/stats/{short_id}` → DynamoDB `query` on Analytics table → Return click count + details
+1. `/health` → DynamoDB connectivity check → Returns service status
+2. `/api/shorten` → DynamoDB `put_item` → Returns short URL with proper `X-Forwarded-Host`/`X-Forwarded-Proto` handling for proxies
+3. `/s/{short_id}` → DynamoDB `get_item` → Write analytics synchronously → 302 redirect
+4. `/api/stats/{short_id}` → DynamoDB `query` on Analytics table → Return click count + details
 
 ## Development Workflow
 
@@ -54,6 +56,7 @@ Uses `pydantic-settings` with `BaseSettings`:
 - All config via env vars (e.g., `AWS_REGION`, `AWS_ENDPOINT`)
 - Aliases support both formats: `aws_region` or `AWS_REGION`
 - `AWS_ENDPOINT` triggers local mode with dummy credentials
+- `ENABLE_ADMIN_ENDPOINTS` (boolean) controls access to `/api/shorten` and `/api/stats` endpoints; redirect endpoint is always enabled
 
 ### DynamoDB Client Creation
 `get_dynamodb_client()` returns boto3 client with conditional logic:
