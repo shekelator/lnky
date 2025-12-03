@@ -180,6 +180,60 @@ class TestShortenURL:
         )
         assert response.status_code == 400
 
+    def test_case_insensitive_short_ids(self, http_client, dynamodb_client):
+        """Test that short IDs are case-insensitive."""
+        custom_id = f"TestCase{int(time.time())}"
+        target_url = "https://test.example.com/case-test"
+
+        # Create with mixed case
+        response1 = http_client.post(
+            "/api/shorten",
+            json={"url": target_url, "shortId": custom_id},
+        )
+        assert response1.status_code == 200
+        data1 = response1.json()
+        
+        # Short ID should be stored as lowercase
+        stored_id = data1["short_id"]
+        assert stored_id == custom_id.lower()
+
+        # Try to create with different case - should conflict
+        response2 = http_client.post(
+            "/api/shorten",
+            json={"url": target_url, "shortId": custom_id.upper()},
+        )
+        assert response2.status_code == 409
+
+        # Try with different case variation - should also conflict
+        response3 = http_client.post(
+            "/api/shorten",
+            json={"url": target_url, "shortId": custom_id.lower()},
+        )
+        assert response3.status_code == 409
+
+        # Test redirect works with different cases
+        for test_case in [custom_id.upper(), custom_id.lower(), custom_id]:
+            redirect_response = http_client.get(
+                f"/s/{test_case}",
+                follow_redirects=False,
+            )
+            assert redirect_response.status_code == 302
+            assert redirect_response.headers["location"] == target_url
+
+        # Verify only one entry exists in DynamoDB (lowercase)
+        result = dynamodb_client.get_item(
+            TableName="URLs",
+            Key={"short_id": {"S": custom_id.lower()}},
+        )
+        assert "Item" in result
+        
+        # Verify uppercase version doesn't exist
+        result_upper = dynamodb_client.get_item(
+            TableName="URLs",
+            Key={"short_id": {"S": custom_id.upper()}},
+        )
+        assert "Item" not in result_upper
+
 
 class TestRedirect:
     """Tests for redirect functionality."""

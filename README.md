@@ -3,6 +3,7 @@ Link shortener built with Python FastAPI
 
 ## Features
 - URL shortening with automatic or custom short IDs
+- Case-insensitive short IDs (e.g., "ShortID" and "shortid" are treated as the same)
 - Analytics tracking for URL clicks (written synchronously)
 - Configurable endpoints via environment variables
 - DynamoDB backend (works with DynamoDB Local for development)
