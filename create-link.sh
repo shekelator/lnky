@@ -37,7 +37,17 @@ docker run -d \
     lnky
 
 echo "Waiting for service to start..."
-sleep 3
+MAX_RETRIES=10
+for i in $(seq 1 $MAX_RETRIES); do
+    if curl -s "http://localhost:$PORT/health" > /dev/null 2>&1; then
+        break
+    fi
+    if [ $i -eq $MAX_RETRIES ]; then
+        echo "Service failed to start after $MAX_RETRIES attempts"
+        exit 1
+    fi
+    sleep 1
+done
 
 # Build JSON payload
 if [ -n "$CUSTOM_ID" ]; then
