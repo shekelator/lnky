@@ -51,9 +51,9 @@ done
 
 # Build JSON payload
 if [ -n "$CUSTOM_ID" ]; then
-    JSON_PAYLOAD="{\"url\":\"$TARGET_URL\",\"shortId\":\"$CUSTOM_ID\"}"
+    JSON_PAYLOAD=$(jq -n --arg url "$TARGET_URL" --arg id "$CUSTOM_ID" '{url: $url, shortId: $id}')
 else
-    JSON_PAYLOAD="{\"url\":\"$TARGET_URL\"}"
+    JSON_PAYLOAD=$(jq -n --arg url "$TARGET_URL" '{url: $url}')
 fi
 
 echo "Creating short link..."
