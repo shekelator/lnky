@@ -24,7 +24,7 @@ from pydantic_settings import BaseSettings
 SHORT_ID_MAX_LENGTH = 50
 SHORT_ID_MIN_LENGTH = 1
 SHORT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
-RESERVED_PREFIXES = ("api",)
+RESERVED_PREFIXES = ("api","health")
 
 # Configure logging
 logging.basicConfig(
@@ -289,7 +289,7 @@ async def shorten_url(request: Request, body: ShortenRequest):
     )
     # Use X-Forwarded-Proto if available (for proxies), otherwise use request scheme
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
-    short_url = f"{proto}://{host}/s/{short_id}"
+    short_url = f"{proto}://{host}/{short_id}"
 
     return ShortenResponse(
         short_id=short_id,
@@ -343,7 +343,7 @@ async def get_stats(short_id: str):
         )
 
 
-@app.get("/s/{short_id}")
+@app.get("/{short_id}")
 async def redirect_url(short_id: str, request: Request):
     """Redirect to the target URL for a shortened URL."""
     if not short_id:

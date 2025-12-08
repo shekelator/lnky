@@ -214,7 +214,7 @@ class TestShortenURL:
         # Test redirect works with different cases
         for test_case in [custom_id.upper(), custom_id.lower(), custom_id]:
             redirect_response = http_client.get(
-                f"/s/{test_case}",
+                f"/{test_case}",
                 follow_redirects=False,
             )
             assert redirect_response.status_code == 302
@@ -275,7 +275,7 @@ class TestShortenURL:
 
         response = http_client.post(
             "/api/shorten",
-            json={"url": "https://test.example.com/API-prefix", "shortId": "API-endpoint"},
+            json={"url": "https://test.example.com/HEALTH-prefix", "shortId": "HEALTHendpoint"},
         )
         assert response.status_code == 422
 
@@ -309,7 +309,7 @@ class TestRedirect:
 
         # Now test the redirect (without following)
         redirect_response = http_client.get(
-            f"/s/{short_id}",
+            f"/{short_id}",
             follow_redirects=False,
         )
 
@@ -331,7 +331,7 @@ class TestRedirect:
     def test_redirect_nonexistent(self, http_client):
         """Test redirect for non-existent short URL."""
         response = http_client.get(
-            "/s/nonexistent-short-id",
+            "/nonexistent-short-id",
             follow_redirects=False,
         )
         assert response.status_code == 404
@@ -354,7 +354,7 @@ class TestStats:
 
         # Access the URL a few times
         for _ in range(3):
-            http_client.get(f"/s/{custom_id}", follow_redirects=False)
+            http_client.get(f"/{custom_id}", follow_redirects=False)
             time.sleep(0.1)
 
         # Analytics are now written synchronously
@@ -479,7 +479,7 @@ class TestPerformance:
         start = time.time()
 
         for _ in range(num_requests):
-            http_client.get(f"/s/{short_id}", follow_redirects=False)
+            http_client.get(f"/{short_id}", follow_redirects=False)
 
         elapsed = time.time() - start
         avg_ms = (elapsed * 1000) / num_requests
@@ -573,7 +573,7 @@ class TestFeatureFlags:
 
                 # Test that redirect endpoint still works (should return 404 for non-existent)
                 redirect_response = client.get(
-                    "/s/nonexistent-id",
+                    "/nonexistent-id",
                     follow_redirects=False,
                 )
                 assert redirect_response.status_code == 404
@@ -601,7 +601,7 @@ class TestFeatureFlags:
 
         # Test redirect endpoint is accessible
         redirect_response = http_client.get(
-            f"/s/{short_id}",
+            f"/{short_id}",
             follow_redirects=False,
         )
         assert redirect_response.status_code == 302

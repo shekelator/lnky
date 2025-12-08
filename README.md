@@ -93,7 +93,7 @@ curl -X POST http://localhost:8080/api/shorten \
   -d '{"url":"https://example.com", "shortId":"example"}'
 
 # Access a shortened URL
-curl -L http://localhost:8080/s/example
+curl -L http://localhost:8080/example
 
 # Get stats for a short URL
 curl http://localhost:8080/api/stats/example
