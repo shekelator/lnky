@@ -65,12 +65,3 @@ Thumbs.db
 
 # DynamoDB Local data
 docker/dynamodb/
-
-# Legacy Go files (kept for reference)
-# go.mod
-# go.sum
-# *.exe
-# *.exe~
-# *.dll
-# *.dylib
-# lnkydocker/dynamodb/
