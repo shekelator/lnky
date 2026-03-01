@@ -14,7 +14,7 @@
 ### Data Flow
 1. `/health` → DynamoDB connectivity check → Returns service status
 2. `/api/shorten` → DynamoDB `put_item` → Returns short URL with proper `X-Forwarded-Host`/`X-Forwarded-Proto` handling for proxies
-3. `/s/{short_id}` → DynamoDB `get_item` → Write analytics synchronously → 302 redirect
+3. `/{short_id}` → DynamoDB `get_item` → Write analytics synchronously → 302 redirect
 4. `/api/stats/{short_id}` → DynamoDB `query` on Analytics table → Return click count + details
 
 ## Development Workflow

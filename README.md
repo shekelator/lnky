@@ -9,6 +9,11 @@ Link shortener built with Python FastAPI
 - DynamoDB backend (works with DynamoDB Local for development)
 - Optimized for AWS App Runner with low-volume traffic
 
+## TODO
+- Delete endpoint
+- Possibly improve tooling? Script for management?
+- Endpoint to list all URLs, perhaps with stats in more consumable fashion
+
 ## Running
 
 ### Docker standalone
@@ -88,7 +93,7 @@ curl -X POST http://localhost:8080/api/shorten \
   -d '{"url":"https://example.com", "shortId":"example"}'
 
 # Access a shortened URL
-curl -L http://localhost:8080/s/example
+curl -L http://localhost:8080/example
 
 # Get stats for a short URL
 curl http://localhost:8080/api/stats/example
